@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Миний хуанли</title>
+<style>
+:root{--bg:#faf7f2;--card:#fff;--ink:#2b2622;--mute:#8a8178;--line:#e8e1d6;--acc:#c2410c;--today:#fde8d7;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1815;--card:#26221e;--ink:#f1ebe3;--mute:#9b9288;--line:#3a342e;--acc:#fb923c;--today:#3b2a1d;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:560px;margin:0 auto;padding:14px}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+h1{font-size:20px;margin:0}
+button,input{font:inherit;color:inherit}
+button{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer}
+button.pri{background:var(--acc);color:#fff;border-color:var(--acc)}
+input{width:100%;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dow{text-align:center;font-size:12px;color:var(--mute);padding:4px 0}
+.day{aspect-ratio:1/1.1;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:4px;position:relative;text-align:left;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden}
+.day.empty{background:transparent;border:0;pointer-events:none}
+.day.today{background:var(--today);border-color:var(--acc)}
+.day .n{font-size:14px;font-weight:600}
+.day .m{font-size:16px;line-height:1;text-align:right}
+.day .dot{position:absolute;bottom:5px;left:5px;font-size:10px;color:var(--mute)}
+.bar{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--mute);margin-top:12px;gap:8px}
+#auth{max-width:340px;margin:12vh auto 0;padding:0 14px}
+#auth h1{margin-bottom:14px}
+#msg{font-size:13px;color:var(--acc);min-height:18px;margin:6px 0}
+#ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center;z-index:5}
+#ov.on{display:flex}
+.sheet{background:var(--bg);width:100%;max-width:560px;max-height:92%;overflow:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px))}
+.sheet h2{margin:0 0 10px;font-size:17px}
+textarea{width:100%;min-height:130px;resize:vertical;font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px}
+.marks{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.marks button{font-size:20px;padding:6px 10px}
+.marks button.on{border-color:var(--acc);background:var(--today)}
+.imgs{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.imgs div{position:relative}
+.imgs img{width:92px;height:92px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
+.imgs .x{position:absolute;top:-6px;right:-6px;padding:0;width:22px;height:22px;border-radius:50%;font-size:12px}
+.row{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+#big{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:9}
+#big.on{display:flex}#big img{max-width:96%;max-height:96%}
+[hidden]{display:none!important}
+.scr{margin:12px 0;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+.srow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.srow input{width:64px;margin:0}
+.arow{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.arow input[type=text]{flex:1;min-width:0;margin:0}
+.arow input[type=number]{width:72px;margin:0}
+.arow span{font-size:12px;color:var(--mute);min-width:44px}
+.x2{padding:2px 8px}
+#sstat{font-size:12px;color:var(--mute);margin-bottom:6px}
+</style>
+</head>
+<body>
+
+<div id="auth" hidden>
+  <h1>📅 Миний хуанли</h1>
+  <input id="em" type="email" placeholder="Имэйл" autocomplete="email">
+  <input id="pw" type="password" placeholder="Нууц үг (6+ тэмдэгт)" autocomplete="current-password">
+  <div id="msg"></div>
+  <div class="row" style="justify-content:flex-start">
+    <button id="login" class="pri">Нэвтрэх</button>
+    <button id="signup">Бүртгүүлэх</button>
+  </div>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <header>
+    <button id="prev" aria-label="Өмнөх сар">‹</button>
+    <h1 id="title"></h1>
+    <button id="next" aria-label="Дараах сар">›</button>
+  </header>
+  <div class="grid" id="grid"></div>
+  <div class="bar">
+    <span id="who"></span>
+    <span><button id="today" style="padding:4px 8px;font-size:12px">Өнөөдөр</button>
+    <button id="logout" style="padding:4px 8px;font-size:12px">Гарах</button></span>
+  </div>
+</div>
+
+<div id="ov"><div class="sheet">
+  <h2 id="dt"></h2>
+  <textarea id="note" placeholder="Өнөөдрийн тэмдэглэл..."></textarea>
+  <div class="marks" id="marks"></div>
+  <div class="imgs" id="imgs"></div>
+  <div class="scr">
+    <div class="srow"><b>📱 Screen time</b>
+      <input type="file" id="sfile" accept="image/*" multiple hidden>
+      <button id="sbtn" style="margin-left:auto">Зургаас унших</button></div>
+    <div id="sstat">Battery хэсгийн screenshot сонгоно. Уншсан тоог шалгаад засна уу.</div>
+    <div class="srow">Нийт: <input id="sh" type="number" min="0" inputmode="numeric" placeholder="0"> ц
+      <input id="sm" type="number" min="0" max="59" inputmode="numeric" placeholder="0"> мин</div>
+    <div id="apps"></div>
+    <button id="aadd" style="padding:4px 10px;font-size:13px">+ Апп нэмэх</button>
+  </div>
+  <input type="file" id="file" accept="image/*" multiple hidden>
+  <div id="smsg" style="font-size:13px;color:var(--acc)"></div>
+  <div class="row">
+    <button id="add">📷 Зураг нэмэх</button>
+    <button id="cancel">Хаах</button>
+    <button id="save" class="pri">Хадгалах</button>
+  </div>
+</div></div>
+<div id="big"><img alt=""></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script>
+// ===== ЭНД ӨӨРИЙНХӨӨ УТГУУДЫГ ТАВИНА (Supabase > Project Settings > API) =====
+const SUPABASE_URL = "https://kanywxypqszsfzvumivi.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imthbnl3eHlwcXN6c2Z6dnVtaXZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM1NTk3OTcsImV4cCI6MjEwOTEzNTc5N30.AhUd6ntIzLbgdVHmHgeGR9jN63vfLRdrQpiJP0S0R8A";
+// =============================================================================
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+const MARKS = ["⭐","❤️","✅","🎉","📌","😴"];
+const MONTHS = ["1-р сар","2-р сар","3-р сар","4-р сар","5-р сар","6-р сар","7-р сар","8-р сар","9-р сар","10-р сар","11-р сар","12-р сар"];
+const DOW = ["Да","Мя","Лх","Пү","Ба","Бя","Ня"];
+const key = (y,m,d) => y+"-"+String(m+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+const mem = {};
+let user = null, Y = new Date().getFullYear(), M = new Date().getMonth(), sel = null, draft = null;
+
+// ---------- Нэвтрэлт ----------
+async function authDo(kind) {
+  $("msg").textContent = "";
+  const email = $("em").value.trim(), password = $("pw").value;
+  const r = kind === "up" ? await sb.auth.signUp({email, password}) : await sb.auth.signInWithPassword({email, password});
+  if (r.error) { $("msg").textContent = r.error.message; return; }
+  if (kind === "up" && !r.data.session) $("msg").textContent = "Имэйлээ шалгаад баталгаажуулах линк дээр дарна уу.";
+}
+$("login").onclick = () => authDo("in");
+$("signup").onclick = () => authDo("up");
+$("logout").onclick = () => sb.auth.signOut();
+
+async function onSession(session) {
+  user = session ? session.user : null;
+  $("auth").hidden = !!user; $("app").hidden = !user;
+  if (!user) { for (const k in mem) delete mem[k]; return; }
+  $("who").textContent = user.email;
+  await loadAll(); render();
+}
+sb.auth.onAuthStateChange((_e, session) => setTimeout(() => onSession(session), 0));
+sb.auth.getSession().then(({data}) => onSession(data.session));
+
+// ---------- Өгөгдөл ----------
+async function loadAll() {
+  const {data, error} = await sb.from("days").select("day,note,mark,imgs,screen_min,apps");
+  if (error) { console.error(error); return; }
+  for (const k in mem) delete mem[k];
+  data.forEach(r => mem[r.day] = {note: r.note, mark: r.mark, imgs: r.imgs || [], screen_min: r.screen_min, apps: r.apps || []});
+}
+async function saveDay(k, v) {
+  if (!v) return sb.from("days").delete().eq("day", k);
+  return sb.from("days").upsert({user_id: user.id, day: k, note: v.note, mark: v.mark, imgs: v.imgs, screen_min: v.screen, apps: v.apps, updated_at: new Date().toISOString()});
+}
+
+// ---------- Хуанли ----------
+function render() {
+  $("title").textContent = Y + " · " + MONTHS[M];
+  const g = $("grid"); g.innerHTML = "";
+  DOW.forEach(d => { const e = document.createElement("div"); e.className = "dow"; e.textContent = d; g.appendChild(e); });
+  const first = (new Date(Y, M, 1).getDay() + 6) % 7, n = new Date(Y, M + 1, 0).getDate(), t = new Date();
+  for (let i = 0; i < first; i++) { const e = document.createElement("div"); e.className = "day empty"; g.appendChild(e); }
+  for (let d = 1; d <= n; d++) {
+    const k = key(Y, M, d), v = mem[k], b = document.createElement("button");
+    b.className = "day" + (t.getFullYear() == Y && t.getMonth() == M && t.getDate() == d ? " today" : "");
+    const a = document.createElement("span"); a.className = "n"; a.textContent = d;
+    const m = document.createElement("span"); m.className = "m"; m.textContent = (v && v.mark) || "";
+    b.append(a, m);
+    if (v && (v.note || (v.imgs && v.imgs.length) || v.screen_min != null)) {
+      const o = document.createElement("span"); o.className = "dot";
+      o.textContent = (v.note ? "📝" : "") + (v.imgs && v.imgs.length ? "🖼" : "") + (v.screen_min != null ? "📱" : ""); b.appendChild(o);
+    }
+    b.onclick = () => openDay(k, d); g.appendChild(b);
+  }
+}
+const urlOf = {};
+let orig = [], fresh = [];
+async function resolveUrls(paths) {
+  const need = paths.filter(p => !urlOf[p]);
+  need.filter(p => p.startsWith("data:")).forEach(p => urlOf[p] = p);
+  const real = need.filter(p => !p.startsWith("data:"));
+  if (!real.length) return;
+  const {data} = await sb.storage.from("photos").createSignedUrls(real, 3600);
+  (data || []).forEach(x => { if (x.signedUrl) urlOf[x.path] = x.signedUrl; });
+}
+async function openDay(k, d) {
+  sel = k; const v = mem[k] || {};
+  draft = {note: v.note || "", mark: v.mark || "", imgs: (v.imgs || []).slice(), screen: v.screen_min == null ? null : v.screen_min, apps: (v.apps || []).map(a => ({n: a.n, m: a.m}))};
+  orig = draft.imgs.slice(); fresh = [];
+  $("dt").textContent = Y + " оны " + (M + 1) + "-р сарын " + d;
+  $("note").value = draft.note; $("smsg").textContent = "";
+  drawMarks(); drawImgs(); drawScreen(); $("sstat").textContent = "Battery хэсгийн screenshot сонгоно. Уншсан тоог шалгаад засна уу."; $("ov").classList.add("on");
+  await resolveUrls(draft.imgs); drawImgs();
+}
+function drawMarks() {
+  const w = $("marks"); w.innerHTML = "";
+  MARKS.forEach(s => {
+    const b = document.createElement("button"); b.textContent = s; b.className = draft.mark === s ? "on" : "";
+    b.onclick = () => { draft.mark = draft.mark === s ? "" : s; drawMarks(); }; w.appendChild(b);
+  });
+}
+function drawImgs() {
+  const w = $("imgs"); w.innerHTML = "";
+  draft.imgs.forEach((p, i) => {
+    const d = document.createElement("div"), im = document.createElement("img"); im.src = urlOf[p] || "";
+    im.onclick = () => { $("big").querySelector("img").src = urlOf[p] || ""; $("big").classList.add("on"); };
+    const x = document.createElement("button"); x.className = "x"; x.textContent = "✕";
+    x.onclick = () => { draft.imgs.splice(i, 1); drawImgs(); };
+    d.append(im, x); w.appendChild(d);
+  });
+}
+function shrink(f) {
+  return new Promise(res => {
+    const r = new FileReader();
+    r.onload = () => {
+      const im = new Image();
+      im.onload = () => {
+        const s = Math.min(1, 1400 / Math.max(im.width, im.height)), c = document.createElement("canvas");
+        c.width = im.width * s; c.height = im.height * s; c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+        c.toBlob(b => res(b), "image/jpeg", .82);
+      };
+      im.onerror = () => res(null); im.src = r.result;
+    };
+    r.onerror = () => res(null); r.readAsDataURL(f);
+  });
+}
+function rmFiles(paths) {
+  const real = paths.filter(p => !p.startsWith("data:"));
+  if (real.length) sb.storage.from("photos").remove(real);
+}
+function fmt(m) { return m >= 60 ? Math.floor(m / 60) + "ц " + (m % 60) + "м" : m + "м"; }
+function setTotal() {
+  const h = $("sh").value, m = $("sm").value;
+  draft.screen = (h === "" && m === "") ? null : (parseInt(h) || 0) * 60 + (parseInt(m) || 0);
+}
+$("sh").oninput = $("sm").oninput = setTotal;
+function drawScreen() {
+  const t = draft.screen;
+  $("sh").value = t == null ? "" : Math.floor(t / 60); $("sm").value = t == null ? "" : t % 60;
+  const w = $("apps"); w.innerHTML = "";
+  draft.apps.forEach((a, i) => {
+    const r = document.createElement("div"); r.className = "arow";
+    const n = document.createElement("input"); n.type = "text"; n.value = a.n; n.placeholder = "Апп"; n.oninput = () => { a.n = n.value; };
+    const m = document.createElement("input"); m.type = "number"; m.min = 0; m.inputMode = "numeric"; m.value = a.m;
+    const f = document.createElement("span"); f.textContent = fmt(a.m || 0);
+    m.oninput = () => { a.m = Math.max(0, parseInt(m.value) || 0); f.textContent = fmt(a.m); };
+    const x = document.createElement("button"); x.className = "x2"; x.textContent = "✕";
+    x.onclick = () => { draft.apps.splice(i, 1); drawScreen(); };
+    r.append(n, m, f, x); w.appendChild(r);
+  });
+}
+$("aadd").onclick = () => { draft.apps.push({n: "", m: 0}); drawScreen(); };
+
+// ---- Screenshot -> OCR ----
+function prep(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onerror = () => rej(new Error("Файл уншигдсангүй"));
+    r.onload = () => {
+      const im = new Image();
+      im.onerror = () => rej(new Error("Зураг нээгдсэнгүй"));
+      im.onload = () => {
+        const sc = Math.min(2, Math.max(1, 1600 / im.width)), c = document.createElement("canvas");
+        c.width = Math.round(im.width * sc); c.height = Math.round(im.height * sc);
+        const x = c.getContext("2d"); x.drawImage(im, 0, 0, c.width, c.height);
+        const d = x.getImageData(0, 0, c.width, c.height), p = d.data; let sum = 0;
+        for (let i = 0; i < p.length; i += 4) { const g = .299 * p[i] + .587 * p[i + 1] + .114 * p[i + 2]; p[i] = p[i + 1] = p[i + 2] = g; sum += g; }
+        const dark = sum / (p.length / 4) < 110;   // харанхуй дэлгэц бол өнгийг урвуулна
+        if (dark) for (let i = 0; i < p.length; i += 4) { p[i] = p[i + 1] = p[i + 2] = 255 - p[i]; }
+        x.putImageData(d, 0, 0); res(c);
+      };
+      im.src = r.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+function parseShot(raw) {
+  const t = raw.replace(/rnin|mln|m1n/gi, "min");
+  const lines = t.split("\n").map(s => s.trim()).filter(Boolean);
+  let screen = null;
+  const i = t.search(/screen\s*on/i);
+  if (i >= 0) {
+    let seg = t.slice(i + 9); const e = seg.search(/battery\s*usage\s*by\s*app/i); if (e > 0) seg = seg.slice(0, e);
+    const m = seg.match(/(?:(\d+)\s*h\s*)?(\d+)\s*min|(\d+)\s*h\b/i);
+    if (m) screen = m[3] ? +m[3] * 60 : (m[1] ? +m[1] * 60 : 0) + (+m[2]);
+  }
+  const apps = [], re = /(\d{1,3}(?:[.,]\d+)?)\s*%\s*[|Il!\/\\]?\s*(?:(\d+)\s*h)?\s*(?:(\d+)\s*min)?/i;
+  const clean = s => { let tk = s.replace(/[^A-Za-z0-9 .&+\-_']/g, " ").trim().split(/\s+/); while (tk.length > 1 && tk[0].length <= 2) tk.shift(); return tk.join(" "); };
+  lines.forEach((ln, j) => {
+    const m = ln.match(re); if (!m || (!m[2] && !m[3])) return;
+    const mins = (m[2] ? +m[2] * 60 : 0) + (m[3] ? +m[3] : 0);
+    let name = ln.slice(0, m.index); name = /[A-Za-z]{2}/.test(name) ? clean(name) : "";
+    if (!name) { let k = j - 1; while (k >= 0 && (lines[k].includes("%") || !/[A-Za-z]{2}/.test(lines[k]))) k--; if (k >= 0) name = clean(lines[k]); }
+    if (!name || /battery|used since|charging|screen o/i.test(name)) return;
+    apps.push({n: name, m: mins});
+  });
+  return {screen, apps};
+}
+$("sbtn").onclick = () => $("sfile").click();
+$("sfile").onchange = async e => {
+  const files = [...e.target.files]; e.target.value = "";
+  if (!files.length) return;
+  if (typeof Tesseract === "undefined") { $("sstat").textContent = "OCR сан ачаалагдсангүй. Интернэтээ шалгаад хуудсаа дахин ачаална уу."; return; }
+  $("sbtn").disabled = true; $("sstat").textContent = "Бэлдэж байна (анх удаа хэдэн секунд)...";
+  let screen = null; const got = {};
+  try {
+    const w = await Tesseract.createWorker("eng", 1, {logger: m => { if (m.status === "recognizing text") $("sstat").textContent = "Уншиж байна " + Math.round(m.progress * 100) + "%"; }});
+    await w.setParameters({tessedit_pageseg_mode: "6", preserve_interword_spaces: "1"});
+    for (const f of files) {
+      const {data} = await w.recognize(await prep(f));
+      const r = parseShot(data.text);
+      if (r.screen != null) screen = r.screen;
+      r.apps.forEach(a => { const k = a.n.toLowerCase(); if (!got[k] || got[k].m < a.m) got[k] = a; });
+    }
+    await w.terminate();
+  } catch (err) { $("sstat").textContent = "Алдаа: " + (err.message || err); $("sbtn").disabled = false; return; }
+  $("sbtn").disabled = false;
+  const list = Object.values(got).sort((a, b) => b.m - a.m);
+  if (list.length) draft.apps = list;
+  if (screen != null) draft.screen = screen;
+  drawScreen();
+  $("sstat").textContent = (list.length || screen != null)
+    ? "Уншлаа: " + list.length + " апп" + (screen != null ? ", нийт " + fmt(screen) : ", нийт хугацаа олдсонгүй") + ". Тоонуудыг шалгаад засна уу."
+    : "Юу ч танигдсангүй. Battery хэсгийн дэлгэцээ бүтнээр нь авсан эсэхээ шалгаад дахин оролдох, эсвэл гараар оруулна уу.";
+};
+$("add").onclick = () => $("file").click();
+$("file").onchange = async e => {
+  $("smsg").textContent = "Зураг илгээж байна...";
+  let err = "";
+  for (const f of e.target.files) {
+    const blob = await shrink(f); if (!blob) continue;
+    const path = user.id + "/" + sel + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 7) + ".jpg";
+    const {error} = await sb.storage.from("photos").upload(path, blob, {contentType: "image/jpeg"});
+    if (error) { err = "Алдаа: " + error.message; continue; }
+    urlOf[path] = URL.createObjectURL(blob); draft.imgs.push(path); fresh.push(path);
+  }
+  $("smsg").textContent = err; e.target.value = ""; drawImgs();
+};
+$("save").onclick = async () => {
+  draft.note = $("note").value.trim();
+  draft.apps = draft.apps.filter(a => a.n.trim()); setTotal();
+  const empty = !draft.note && !draft.mark && !draft.imgs.length && draft.screen == null && !draft.apps.length;
+  $("save").disabled = true; $("smsg").textContent = "Хадгалж байна...";
+  const {error} = await saveDay(sel, empty ? null : draft);
+  $("save").disabled = false;
+  if (error) { $("smsg").textContent = "Алдаа: " + error.message; return; }
+  rmFiles([...orig, ...fresh].filter(p => !draft.imgs.includes(p)));
+  if (empty) delete mem[sel]; else mem[sel] = {note: draft.note, mark: draft.mark, imgs: draft.imgs, screen_min: draft.screen, apps: draft.apps};
+  $("ov").classList.remove("on"); render();
+};
+function closeDay() { rmFiles(fresh); fresh = []; $("ov").classList.remove("on"); }
+$("cancel").onclick = closeDay;
+$("ov").onclick = e => { if (e.target === $("ov")) closeDay(); };
+$("big").onclick = () => $("big").classList.remove("on");
+$("prev").onclick = () => { M--; if (M < 0) { M = 11; Y--; } render(); };
+$("next").onclick = () => { M++; if (M > 11) { M = 0; Y++; } render(); };
+$("today").onclick = () => { const t = new Date(); Y = t.getFullYear(); M = t.getMonth(); render(); };
+</script>
+</body>
+</html>
